@@ -8,8 +8,10 @@ import json
 
 SAMPLE_RATE = 16000
 DURATION = 1.2
-MODEL_PATH = "modelo_audio.h5"
-LABELS_PATH = "labels.json"
+MODEL_PATH = "modelo_audio_da.h5"
+LABELS_PATH = "labels_da.json"
+# MODEL_PATH = "modelo_audio.h5"
+# LABELS_PATH = "labels.json"
 
 
 N_MELS = 128
@@ -26,7 +28,7 @@ def gravar_audio(nome_arquivo):
     if max_val > 0:
         audio = audio / max_val
 
-    audio = np.clip(audio * 2.0, -1, 1)
+    audio = np.clip(audio * 1.0, -1, 1)
 
     write(nome_arquivo, SAMPLE_RATE, audio.astype(np.float32))
 
@@ -47,10 +49,9 @@ def audio_para_mel(file_path):
     )
 
     mel_db = librosa.power_to_db(mel, ref=np.max)
-
-
     mel_db = (mel_db - mel_db.min()) / (mel_db.max() - mel_db.min())
-
+    # mel_db = librosa.power_to_db(mel, ref=np.max)
+    # mel_db = (mel_db - np.mean(mel_db)) / (np.std(mel_db) + 1e-6)
     if mel_db.shape[1] < MAX_LEN:
         pad = MAX_LEN - mel_db.shape[1]
         mel_db = np.pad(mel_db, ((0,0),(0,pad)))
@@ -69,11 +70,11 @@ inv_map = {v: k for k, v in label_map.items()}
 
 
 def classificar_audio():
-    caminho = gravar_audio("teste.wav")
+    caminho = gravar_audio("test_audios/CNN_teste.wav")
 
     mel = audio_para_mel(caminho)
 
-    # formato da CNN
+
     mel = np.expand_dims(mel, axis=-1)
     mel = np.expand_dims(mel, axis=0)
 

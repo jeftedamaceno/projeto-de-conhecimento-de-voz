@@ -84,6 +84,29 @@ history = model.fit(
     epochs=30,
     batch_size=32
 )
+preds = model.predict(X_val)
+classes_pred = np.argmax(preds, axis=1)
+
+from collections import Counter
+print("Distribuição das previsões:")
+print(Counter(classes_pred))
+from sklearn.metrics import classification_report
+
+y_val_labels = np.argmax(y_val, axis=1)
+
+print(classification_report(y_val_labels, classes_pred, target_names=labels))
+
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+cm = confusion_matrix(y_val_labels, classes_pred)
+
+plt.figure(figsize=(6,5))
+sns.heatmap(cm, annot=True, fmt='d', xticklabels=labels, yticklabels=labels)
+plt.xlabel("Predito")
+plt.ylabel("Real")
+plt.show()
 
 model.save("modelo_audio.h5")
 

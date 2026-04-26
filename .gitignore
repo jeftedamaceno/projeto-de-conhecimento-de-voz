@@ -1,6 +1,8 @@
 /dataset/
+/dataset_ruido/
 /dataset_vozes/
 /spectrograms/
+/spectrograms_ruido/
 /dataset_vozes_old/
 /spectrograms_old/
 /dados/
