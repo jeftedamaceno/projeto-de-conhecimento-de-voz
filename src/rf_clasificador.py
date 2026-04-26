@@ -19,14 +19,35 @@ os.makedirs(TEST_FOLDER, exist_ok=True)
 # ==============================
 # 1. FUNÇÃO PARA GRAVAR ÁUDIO
 # ==============================
+# def gravar_audio(nome_arquivo):
+#     print("Gravando...")
+#     audio = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1)
+#     sd.wait()
+#     print("Gravação finalizada!")
+
+#     caminho = os.path.join(TEST_FOLDER, nome_arquivo)
+#     write(caminho, SAMPLE_RATE, audio)
+
+#     return caminho
 def gravar_audio(nome_arquivo):
     print("Gravando...")
     audio = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1)
     sd.wait()
     print("Gravação finalizada!")
 
+    # 🔥 NORMALIZAÇÃO + GANHO
+    max_val = np.max(np.abs(audio))
+    if max_val > 0:
+        audio = audio / max_val  # normaliza
+
+    ganho = 2.0  # ajuste aqui (2 a 5 é seguro)
+    audio = audio * ganho
+
+    # evita distorção
+    audio = np.clip(audio, -1, 1)
+
     caminho = os.path.join(TEST_FOLDER, nome_arquivo)
-    write(caminho, SAMPLE_RATE, audio)
+    write(caminho, SAMPLE_RATE, audio.astype(np.float32))
 
     return caminho
 
