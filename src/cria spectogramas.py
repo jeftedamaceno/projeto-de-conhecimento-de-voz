@@ -8,11 +8,18 @@ OUTPUT_PATH = "spectrograms"
 
 os.makedirs(OUTPUT_PATH, exist_ok=True)
 
+
+def pad_or_trim(mel, max_len=94):
+    if mel.shape[1] < max_len:
+        pad_width = max_len - mel.shape[1]
+        mel = np.pad(mel, ((0,0),(0,pad_width)))
+    else:
+        mel = mel[:, :max_len]
+    return mel
 def save_spectrogram(file_path, output_path):
     try:
         audio, sr = librosa.load(file_path, sr=16000)
 
-        # 🔥 gera Mel Spectrogram
         mel_spec = librosa.feature.melspectrogram(
             y=audio,
             sr=sr,
@@ -21,18 +28,16 @@ def save_spectrogram(file_path, output_path):
 
         mel_spec_db = librosa.power_to_db(mel_spec, ref=np.max)
 
-        # salvar como imagem
-        plt.figure(figsize=(3, 3))
-        plt.axis('off')
-        plt.imshow(mel_spec_db, aspect='auto', origin='lower')
-        plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
-        plt.close()
+      
+        mel_spec_db = (mel_spec_db - mel_spec_db.min()) / (mel_spec_db.max() - mel_spec_db.min())
+        mel_spec_db = pad_or_trim(mel_spec_db)
+        np.save(output_path, mel_spec_db)
 
     except Exception as e:
         print(f"Erro: {file_path} -> {e}")
 
 
-# percorrer dataset
+
 for label in os.listdir(DATASET_PATH):
     label_path = os.path.join(DATASET_PATH, label)
 
@@ -44,14 +49,12 @@ for label in os.listdir(DATASET_PATH):
 
     for file in os.listdir(label_path):
         file_path = os.path.join(label_path, file)
+
         output_file = os.path.join(
             output_label_path,
-            os.path.splitext(file)[0] + ".png"
+            os.path.splitext(file)[0] + ".npy"
         )
-        # output_file = os.path.join(
-        #     output_label_path,
-        #     file.replace(".ogg", ".png")
-        # )
+
 
         save_spectrogram(file_path, output_file)
 

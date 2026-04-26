@@ -3,18 +3,17 @@ import librosa
 import soundfile as sf
 import numpy as np
 
-# Caminhos
+
 origem = "ruido"
 destino = os.path.join("ruido tratado", "ruido")
 
 extensoes = (".wav", ".mp3", ".ogg", ".flac", ".m4a")
 
-# Configurações
+
 sample_rate = 22050
 duracao_final = 1.2
 padding = 0.2
 
-# Criar pasta destino
 os.makedirs(destino, exist_ok=True)
 
 contador = 0
@@ -48,7 +47,7 @@ def cortar_audio_inteligente(y, sr):
     return y_cortado
 
 
-# Loop principal (sem alunos e sem classes)
+
 for arquivo in os.listdir(origem):
 
     if not arquivo.lower().endswith(extensoes):

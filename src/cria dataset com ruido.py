@@ -103,7 +103,6 @@ OUTPUT_CSV_NOISE = "dataset_ruido.csv"
 
 data = []
 
-# 🔥 controle de quantas variações por áudio
 MAX_AUG_PER_AUDIO = 2
 
 
@@ -137,25 +136,21 @@ def extract_features(audio, sr):
 def augment_audio(audio, sr):
     augmented = []
 
-    # 🔊 ruído controlado (melhor)
+
     noise_factor = np.random.uniform(0.001, 0.003)
     noise = audio + noise_factor * np.random.randn(len(audio))
     augmented.append(noise)
 
-    # 🎵 pitch leve
     pitch = librosa.effects.pitch_shift(audio, sr=sr, n_steps=np.random.choice([-1, 1]))
     augmented.append(pitch)
 
-    # ⏱️ velocidade leve
+
     speed = librosa.effects.time_stretch(audio, rate=np.random.uniform(0.9, 1.1))
     augmented.append(speed)
 
     return augmented
 
 
-# ==============================
-# PERCORRER DATASET
-# ==============================
 
 for label in os.listdir(DATASET_PATH):
     label_path = os.path.join(DATASET_PATH, label)
@@ -171,7 +166,7 @@ for label in os.listdir(DATASET_PATH):
 
             augmented_versions = augment_audio(audio, sr)
 
-            # 🔥 limitar quantidade
+   
             for aug_audio in augmented_versions[:MAX_AUG_PER_AUDIO]:
                 features = extract_features(aug_audio, sr)
 

@@ -6,44 +6,27 @@ import sounddevice as sd
 from scipy.io.wavfile import write
 from sklearn.ensemble import RandomForestClassifier
 
-# ==============================
-# CONFIG
-# ==============================
 SAMPLE_RATE = 16000
-DURATION = 1.2  # segundos
+DURATION = 1.2   
 TEST_FOLDER = "test_audios"
 MODEL_PATH = "dataset.csv"
 
 os.makedirs(TEST_FOLDER, exist_ok=True)
 
-# ==============================
-# 1. FUNÇÃO PARA GRAVAR ÁUDIO
-# ==============================
-# def gravar_audio(nome_arquivo):
-#     print("Gravando...")
-#     audio = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1)
-#     sd.wait()
-#     print("Gravação finalizada!")
 
-#     caminho = os.path.join(TEST_FOLDER, nome_arquivo)
-#     write(caminho, SAMPLE_RATE, audio)
-
-#     return caminho
 def gravar_audio(nome_arquivo):
     print("Gravando...")
     audio = sd.rec(int(DURATION * SAMPLE_RATE), samplerate=SAMPLE_RATE, channels=1)
     sd.wait()
     print("Gravação finalizada!")
 
-    # 🔥 NORMALIZAÇÃO + GANHO
     max_val = np.max(np.abs(audio))
     if max_val > 0:
-        audio = audio / max_val  # normaliza
+        audio = audio / max_val 
 
-    ganho = 2.0  # ajuste aqui (2 a 5 é seguro)
+    ganho = 2.0  
     audio = audio * ganho
 
-    # evita distorção
     audio = np.clip(audio, -1, 1)
 
     caminho = os.path.join(TEST_FOLDER, nome_arquivo)
@@ -51,14 +34,11 @@ def gravar_audio(nome_arquivo):
 
     return caminho
 
-# ==============================
-# 2. EXTRAIR FEATURES (igual dataset)
-# ==============================
 def extrair_features(file_path):
-    # audio, sr = librosa.load(file_path, sr=16000)
+   
     audio, sr = librosa.load(file_path, sr=16000)
 
-    # 🔥 NORMALIZAÇÃO
+
     audio = normalizar_audio(audio)
     audio = audio * 6
     audio = np.clip(audio, -1, 1)
@@ -83,9 +63,6 @@ def extrair_features(file_path):
 
     return np.array(features).reshape(1, -1)
 
-# ==============================
-# 3. TREINAR MODELO (a partir do CSV)
-# ==============================
 def treinar_modelo():
     df = pd.read_csv(MODEL_PATH)
 
@@ -104,23 +81,16 @@ def treinar_modelo():
 
     return model, X.columns
 
-# ==============================
-# 4. PIPELINE COMPLETO
-# ==============================
 def classificar_audio():
-    # grava
+
     caminho_audio = gravar_audio("teste.wav")
 
-    # extrai features
     features = extrair_features(caminho_audio)
 
-    # treina modelo
     model, colunas = treinar_modelo()
 
-    # transforma em DataFrame (garante ordem correta)
     features_df = pd.DataFrame(features, columns=colunas)
 
-    # previsão
     pred = model.predict(features_df)
     prob = model.predict_proba(features_df)
 
@@ -128,9 +98,6 @@ def classificar_audio():
     print("Classe prevista:", pred[0])
     print("Confiança:", np.max(prob))
 
-# ==============================
-# EXECUTAR
-# ==============================
 def normalizar_audio(audio):
     max_val = np.max(np.abs(audio))
     if max_val > 0:

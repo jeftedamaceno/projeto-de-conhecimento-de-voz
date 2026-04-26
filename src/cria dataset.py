@@ -20,13 +20,13 @@ for label in os.listdir(DATASET_PATH):
         try:
             audio, sr = librosa.load(file_path, sr=16000)
 
-            # Features básicas
+      
             duration = librosa.get_duration(y=audio, sr=sr)
             zcr = np.mean(librosa.feature.zero_crossing_rate(audio))
             rms = np.mean(librosa.feature.rms(y=audio))
             spectral_centroid = np.mean(librosa.feature.spectral_centroid(y=audio, sr=sr))
 
-            # MFCCs (13 coeficientes)
+         
             mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
             mfcc_means = np.mean(mfcc.T, axis=0)
 
@@ -40,7 +40,7 @@ for label in os.listdir(DATASET_PATH):
                 "spectral_centroid": spectral_centroid
             }
 
-            # adiciona MFCCs
+       
             for i in range(13):
                 row[f"mfcc_{i+1}"] = mfcc_means[i]
 

@@ -20,14 +20,12 @@ def extrair_features_completo(file_path):
 
     audio = padronizar_audio(audio, sr)
 
-    # 🔊 normalização
     max_val = np.max(np.abs(audio))
     if max_val > 0:
         audio = audio / max_val
 
     feats = {}
 
-    # 🔹 BASICAS
     feats["zcr"] = np.mean(librosa.feature.zero_crossing_rate(audio))
     feats["rms"] = np.mean(librosa.feature.rms(y=audio))
     feats["spectral_centroid"] = np.mean(librosa.feature.spectral_centroid(y=audio, sr=sr))
@@ -36,11 +34,11 @@ def extrair_features_completo(file_path):
     feats["contrast"] = np.mean(librosa.feature.spectral_contrast(y=audio, sr=sr))
     feats["energy"] = np.sum(audio**2)
 
-    # 🔹 CHROMA
+    
     chroma = librosa.feature.chroma_stft(y=audio, sr=sr)
     feats["chroma"] = np.mean(chroma)
 
-    # 🔹 MFCC
+    
     mfcc = librosa.feature.mfcc(y=audio, sr=sr, n_mfcc=13)
     for i, val in enumerate(np.mean(mfcc.T, axis=0)):
         feats[f"mfcc_{i}"] = val
@@ -52,14 +50,14 @@ import random
 def augmentar_audio(audio, sr):
     audios = []
 
-    # ruído leve
+   
     noise = np.random.randn(len(audio))
     audios.append(audio + 0.005 * noise)
 
-    # pitch
+    
     audios.append(librosa.effects.pitch_shift(audio, sr=sr, n_steps=2))
 
-    # velocidade
+    
     audios.append(librosa.effects.time_stretch(audio, rate=0.9))
 
     return audios
@@ -76,13 +74,13 @@ def criar_dataset(folder):
         for file in os.listdir(path_label):
             file_path = os.path.join(path_label, file)
 
-            # 🔹 ORIGINAL
+        
             feats = extrair_features_completo(file_path)
             feats["label"] = label
             feats["is_augmented"] = 0
             data.append(feats)
 
-            # 🔹 AUGMENTATION
+            
             audio, sr = librosa.load(file_path, sr=SAMPLE_RATE)
             audio = padronizar_audio(audio, sr)
 
@@ -122,7 +120,7 @@ from sklearn.model_selection import train_test_split
 
 def treinar_modelos(df):
 
-    # 🔹 separar dados reais
+   
     df_real = df[df["is_augmented"] == 0]
 
     X_real = df_real.drop(columns=["label", "is_augmented"])
@@ -131,16 +129,16 @@ def treinar_modelos(df):
     X_aug = df.drop(columns=["label", "is_augmented"])
     y_aug = df["label"]
 
-    # 🔥 SPLIT (SÓ COM DADOS REAIS)
+    
     X_train, X_test, y_train, y_test = train_test_split(
         X_real, y_real, test_size=0.2, random_state=42
     )
 
-    # 🔹 MODELO SEM AUG
+
     model_real = RandomForestClassifier(n_estimators=300, max_depth=15)
     model_real.fit(X_train, y_train)
 
-    # 🔹 MODELO COM AUG (usa mais dados)
+
     model_aug = RandomForestClassifier(n_estimators=300, max_depth=15)
     model_aug.fit(X_aug, y_aug)
 
