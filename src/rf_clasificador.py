@@ -94,7 +94,7 @@ def classificar_audio():
     pred = model.predict(features_df)
     prob = model.predict_proba(features_df)
 
-    print("\n🔮 Resultado:")
+    print("\n Resultado:")
     print("Classe prevista:", pred[0])
     print("Confiança:", np.max(prob))
 

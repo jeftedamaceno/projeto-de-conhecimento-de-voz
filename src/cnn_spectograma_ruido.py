@@ -15,7 +15,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 def processar_audio(file_path):
     audio, sr = librosa.load(file_path, sr=SAMPLE_RATE)
 
-    # normalização
+  
     max_val = np.max(np.abs(audio))
     if max_val > 0:
         audio = audio / max_val
@@ -28,10 +28,10 @@ def processar_audio(file_path):
 
     mel_db = librosa.power_to_db(mel, ref=np.max)
 
-    # 🔥 NORMALIZAÇÃO IMPORTANTE
+
     mel_db = (mel_db - np.mean(mel_db)) / (np.std(mel_db) + 1e-6)
 
-    # pad / trim
+   
     if mel_db.shape[1] < MAX_LEN:
         pad = MAX_LEN - mel_db.shape[1]
         mel_db = np.pad(mel_db, ((0,0),(0,pad)))

@@ -3,7 +3,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.utils import to_categorical
 
-# caminhos
+
 CLEAN_PATH = "spectrograms"
 NOISE_PATH = "spectrograms_ruido"
 
@@ -13,9 +13,7 @@ y = []
 labels = sorted(os.listdir(CLEAN_PATH))
 label_map = {label: i for i, label in enumerate(labels)}
 
-# ==============================
-# 1. CARREGAR DADOS LIMPOS
-# ==============================
+
 for label in labels:
     pasta = os.path.join(CLEAN_PATH, label)
 
@@ -27,13 +25,11 @@ for label in labels:
             X.append(mel)
             y.append(label_map[label])
 
-# guardar só limpos para validação
+
 X_clean = np.array(X)
 y_clean = np.array(y)
 
-# ==============================
-# 2. ADICIONAR DADOS COM RUÍDO (SÓ NO TREINO)
-# ==============================
+
 for label in labels:
     pasta = os.path.join(NOISE_PATH, label)
 
@@ -51,18 +47,16 @@ for label in labels:
 X = np.array(X)
 y = np.array(y)
 
-# ==============================
-# 3. SPLIT (IMPORTANTE)
-# ==============================
+
 X_train, X_val, y_train, y_val = train_test_split(
     X_clean, y_clean, test_size=0.2, random_state=42, stratify=y_clean
 )
 
-# adiciona ruído só no treino
+
 X_train = np.concatenate([X_train, X[len(X_clean):]])
 y_train = np.concatenate([y_train, y[len(y_clean):]])
 
-# one-hot
+
 y_train = to_categorical(y_train)
 y_val = to_categorical(y_val)
 

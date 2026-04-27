@@ -6,9 +6,7 @@ import json
 import time
 import keyboard  
 
-# ==============================
-# CONFIG
-# ==============================
+
 SAMPLE_RATE = 16000
 CHUNK_DURATION = 1.2
 STEP = 0.6
@@ -17,14 +15,11 @@ N_MELS = 128
 MAX_LEN = 94
 
 THRESHOLD = 0.75
-MIN_REPETICOES = 2  # quantas vezes precisa repetir para confirmar
+MIN_REPETICOES = 2 
 
 MODEL_PATH = "modelo_audio_da.h5"
 LABELS_PATH = "labels_da.json"
 
-# ==============================
-# CARREGAR
-# ==============================
 model = load_model(MODEL_PATH)
 
 with open(LABELS_PATH) as f:
@@ -32,18 +27,12 @@ with open(LABELS_PATH) as f:
 
 inv_map = {v: k for k, v in label_map.items()}
 
-# ==============================
-# BUFFER
-# ==============================
 buffer = np.zeros(int(SAMPLE_RATE * CHUNK_DURATION))
 
-# histórico de previsões
+
 historico = []
 sequencia_final = []
 
-# ==============================
-# MEL
-# ==============================
 def audio_para_mel(audio):
     max_val = np.max(np.abs(audio))
     if max_val > 0:
@@ -66,15 +55,12 @@ def audio_para_mel(audio):
 
     return mel_db
 
-# ==============================
-# CALLBACK
-# ==============================
 def callback(indata, frames, time_info, status):
     global buffer, historico, sequencia_final
 
     audio = indata[:, 0]
 
-    # atualiza buffer
+
     buffer[:] = np.roll(buffer, -len(audio))
     buffer[-len(audio):] = audio
 
@@ -91,21 +77,19 @@ def callback(indata, frames, time_info, status):
     if confianca > THRESHOLD:
         historico.append(classe)
 
-        # manter só últimos valores
+    
         if len(historico) > 5:
             historico.pop(0)
 
-        # verificar repetição
+      
         if historico.count(classe) >= MIN_REPETICOES:
             # evitar duplicado na sequência final
             if len(sequencia_final) == 0 or sequencia_final[-1] != classe:
                 sequencia_final.append(classe)
-                print(f"✅ Detectado: {classe} ({confianca:.2f})")
+                print(f" Detectado: {classe} ({confianca:.2f})")
 
-# ==============================
-# EXECUÇÃO
-# ==============================
-print("🎤 Ouvindo... pressione 'q' para parar\n")
+
+print(" Ouvindo... pressione 'q' para parar\n")
 
 with sd.InputStream(
     samplerate=SAMPLE_RATE,
@@ -115,12 +99,10 @@ with sd.InputStream(
 ):
     while True:
         if keyboard.is_pressed('q'):
-            print("\n🛑 Parando...")
+            print("\n Parando...")
             break
         time.sleep(0.1)
 
-# ==============================
-# RESULTADO FINAL
-# ==============================
-print("\n📜 Sequência final detectada:")
+
+print("\n Sequência final detectada:")
 print(" -> ".join(sequencia_final))

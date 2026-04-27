@@ -85,7 +85,7 @@ def classificar_audio():
     classe = inv_map[np.argmax(pred)]
     confianca = np.max(pred)
 
-    print("\n🔮 Resultado:")
+    print("\nResultado:")
     print("Classe prevista:", classe)
     print("Confiança:", confianca)
 
