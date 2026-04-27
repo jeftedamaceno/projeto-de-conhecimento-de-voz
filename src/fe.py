@@ -5,6 +5,8 @@ import sounddevice as sd
 from scipy.io.wavfile import write
 from tensorflow.keras.models import load_model
 import json
+import keyboard
+import time
 
 SAMPLE_RATE = 16000
 DURATION = 1.2
@@ -88,4 +90,16 @@ def classificar_audio():
     print("Confiança:", confianca)
 
 
-classificar_audio()
+# classificar_audio()
+
+def dirige_carro():
+
+    while True:
+        if keyboard.is_pressed('q'):
+          
+            break
+        if keyboard.is_pressed('g'):
+            classificar_audio()
+        
+
+dirige_carro()
