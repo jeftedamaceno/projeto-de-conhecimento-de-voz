@@ -1,68 +1,70 @@
 import numpy as np
 
 
-def normalizar_audio(y):
-    max_val = np.max(np.abs(y))
-    if max_val > 0:
-        y = y / max_val
-    return y
+def normalizar(audio):
+    max_val = np.max(np.abs(audio))
+    return audio / max_val if max_val > 0 else audio
 
 
-def janela_hamming(N):
-    return 0.54 - 0.46 * np.cos(2 * np.pi * np.arange(N) / (N - 1))
+
+def add_noise(audio, noise_factor=0.003):
+    noise = np.random.randn(len(audio))
+    return np.clip(audio + noise_factor * noise, -1, 1)
 
 
-def stft(y, n_fft=1024, hop_length=512):
-    window = janela_hamming(n_fft)
+def time_stretch(audio, rate=1.0):
+    indices = np.arange(0, len(audio), rate)
+    indices = indices[indices < len(audio)].astype(int)
+    return audio[indices]
+
+
+
+def pitch_shift(audio, n_steps):
+    fator = 2 ** (n_steps / 12)
+    stretched = time_stretch(audio, 1 / fator)
+
+    indices = np.linspace(0, len(stretched)-1, len(audio)).astype(int)
+    return stretched[indices]
+
+
+
+def stft(audio, frame_size=1024, hop_size=512):
     frames = []
 
-    for i in range(0, len(y) - n_fft, hop_length):
-        frame = y[i:i+n_fft]
-        frame = frame * window  # aplica janela
+    for i in range(0, len(audio) - frame_size, hop_size):
+        frame = audio[i:i+frame_size]
+
+      
+        window = np.hamming(frame_size)
+        frame = frame * window
 
         fft = np.fft.fft(frame)
-        frames.append(fft)
+        frames.append(np.abs(fft[:frame_size // 2]))
 
-    return np.array(frames)  
-
-
-def espectrograma(y, n_fft=1024, hop_length=512):
-    stft_matrix = stft(y, n_fft, hop_length)
-    magnitude = np.abs(stft_matrix)
-    return magnitude
+    return np.array(frames)
 
 
-def log_espectrograma(y, n_fft=1024, hop_length=512):
-    spec = espectrograma(y, n_fft, hop_length)
-    return np.log(spec + 1e-9)
 
+def filtro_voz_stft(audio, sr):
+    espectrograma = stft(audio)
 
-def filtro_passa_banda(y, sr, f_min=300, f_max=4000):
-    fft = np.fft.fft(y)
-    freqs = np.fft.fftfreq(len(y), 1/sr)
+    freqs = np.fft.fftfreq(1024, 1/sr)[:512]
 
-    fft[(freqs < f_min) | (freqs > f_max)] = 0
+  
+    mask = (freqs >= 300) & (freqs <= 4000)
 
-    return np.real(np.fft.ifft(fft))
+    espectrograma_filtrado = espectrograma * mask
 
+    audio_filtrado = np.zeros(len(audio))
 
-def detectar_energia(y, frame_size=1024, hop=512, threshold=0.02):
-    energias = []
+    frame_size = 1024
+    hop_size = 512
 
-    for i in range(0, len(y) - frame_size, hop):
-        frame = y[i:i+frame_size]
-        energia = np.sum(frame**2)
-        energias.append(energia)
+    for i, frame in enumerate(espectrograma_filtrado):
+        full_fft = np.concatenate([frame, frame[::-1]])
+        rec = np.real(np.fft.ifft(full_fft))
 
-    energias = np.array(energias)
-    energias = energias / (np.max(energias) + 1e-9)
+        start = i * hop_size
+        audio_filtrado[start:start+frame_size] += rec[:frame_size]
 
-    indices = np.where(energias > threshold)[0]
-
-    if len(indices) == 0:
-        return None
-
-    inicio = indices[0] * hop
-    fim = indices[-1] * hop + frame_size
-
-    return inicio, fim
+    return normalizar(audio_filtrado)

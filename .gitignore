@@ -1,4 +1,6 @@
 /dataset/
+/dataset_final/
+/dataset_wav/
 /dataset_ruido/
 /dataset_vozes/
 /spectrograms/
