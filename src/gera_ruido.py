@@ -1,5 +1,5 @@
 import os
-import librosa
+import utils
 import numpy as np
 import soundfile as sf
 
@@ -14,11 +14,6 @@ NOISE_FACTOR = 0.003
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-def add_noise(audio):
-    noise = np.random.randn(len(audio))
-    audio_noisy = audio + NOISE_FACTOR * noise
-    return np.clip(audio_noisy, -1, 1)
-
 
 def augment_audio(audio, sr):
     audios = []
@@ -26,11 +21,11 @@ def augment_audio(audio, sr):
 
     audios.append(audio)
 
-    audios.append(add_noise(audio))
+    audios.append(utils.ruido_branco(audio, ruido = 0.005))
 
-    audios.append(librosa.effects.pitch_shift(audio, sr=sr, n_steps=2))
+    audios.append(utils.pitch_shift(audio, n_steps=2,  sr=sr))
 
-    audios.append(librosa.effects.time_stretch(audio, rate=0.9))
+    audios.append(utils.time_stretch(audio, rate=0.9))
 
     return audios
 
@@ -51,7 +46,7 @@ for label in os.listdir(INPUT_DIR):
         file_path = os.path.join(input_label_path, file)
 
         try:
-            audio, sr = librosa.load(file_path, sr=SAMPLE_RATE)
+            audio, sr = utils.carrega_audio(file_path, sr=SAMPLE_RATE)
 
            
             max_val = np.max(np.abs(audio))

@@ -105,16 +105,12 @@
 #     return fb
 import numpy as np
 import math
+import wave
 
 
 def normalizar(audio):
     max_val = np.max(np.abs(audio))
     return audio / max_val if max_val > 0 else audio
-
-
-def add_noise(audio, noise_factor=0.003):
-    noise = np.random.randn(len(audio))
-    return np.clip(audio + noise_factor * noise, -1, 1)
 
 
 def time_stretch(audio, rate=1.0):
@@ -209,26 +205,6 @@ def cruzamento_zero(audio):
 def rms(signal):
     return math.sqrt(sum(x*x for x in signal) / len(signal))
 
-def time_stretch(signal, factor):
-    signal = np.array(signal)
-    
-    indices = np.arange(0, len(signal), factor)
-    return np.interp(indices, np.arange(len(signal)), signal)
-
-def muda_pitch(signal, n_steps):
-    signal = np.array(signal)
-    
-    factor = 2 ** (n_steps / 12)
-    
-    stretched = time_stretch(signal, 1 / factor)
-
-    result = np.interp(
-        np.linspace(0, len(stretched)-1, len(signal)),
-        np.arange(len(stretched)),
-        stretched
-    )
-    
-    return result
 
 def istft(spectrogram, frame_size=1024, hop=512):
     signal_len = (len(spectrogram) * hop) + frame_size
@@ -240,3 +216,133 @@ def istft(spectrogram, frame_size=1024, hop=512):
         signal[start:start+frame_size] += np.real(np.fft.ifft(frame)) * window
     
     return signal
+
+
+def phase_vocoder(spec, stretch, hop=512):
+    n_frames, n_bins = spec.shape
+    
+    # saída
+    time_steps = np.arange(0, n_frames, stretch)
+    
+    output = np.zeros((len(time_steps), n_bins), dtype=np.complex64)
+    
+    # fase acumulada
+    phase_acc = np.angle(spec[0])
+    
+    # fase anterior
+    prev_phase = np.angle(spec[0])
+    
+    for i, t in enumerate(time_steps):
+        t0 = int(np.floor(t))
+        t1 = min(t0 + 1, n_frames - 1)
+        
+        #interpolação de magnitude
+        mag = (1 - (t - t0)) * np.abs(spec[t0]) + (t - t0) * np.abs(spec[t1])
+        
+        #fase atual
+        phase = np.angle(spec[t1])
+        
+        #diferença das fases
+        delta = phase - prev_phase
+        
+        #remover avanço esperado
+        k = np.arange(n_bins)
+        expected = 2 * np.pi * k * hop / n_bins
+        
+        delta -= expected
+        
+        #wrap para [-pi, pi]
+        delta = (delta + np.pi) % (2 * np.pi) - np.pi
+        
+        # adicionar avanço esperado de volta
+        phase_acc += expected + delta
+        
+        output[i] = mag * np.exp(1j * phase_acc)
+        
+        prev_phase = phase
+
+    return output
+
+
+def time_stretch(audio, stretch, frame_size=1024, pulo=512):
+    spec = stft(audio, frame_size, pulo)
+    stretched_spec = phase_vocoder(spec, stretch, pulo)
+    return istft(stretched_spec, frame_size, pulo)
+
+
+def pitch_shift(signal, n_steps, sr):
+    factor = 2 ** (n_steps / 12)
+    
+    # 1. muda duração sem alterar pitch
+    stretched = time_stretch(signal, 1 / factor)
+    
+    # 2. reamostra para tamanho original
+    result = np.interp(
+        np.linspace(0, len(stretched)-1, len(signal)),
+        np.arange(len(stretched)),
+        stretched
+    )
+    
+    return result
+
+
+def ruido_branco(audio, ruido=0.01):
+    audio = np.array(audio)
+    
+    ruido = np.random.normal(0, ruido, size=audio.shape)
+    return audio + ruido
+
+
+def carrega_wav(path, mono=True):
+    with wave.open(path, 'rb') as w:
+        sr = w.getframerate()
+        n_frames = w.getnframes()
+        n_channels = w.getnchannels()
+        amostra = w.getsampwidth()
+        
+        frames = w.readframes(n_frames)
+    
+    # converte para numpy
+    if amostra == 2:
+        dtype = np.int16
+    elif amostra == 4:
+        dtype = np.int32
+    else:
+        raise ValueError("Formato não suportado")
+    
+    audio = np.frombuffer(frames, dtype=dtype)
+    
+    # reshape se for estéreo
+    if n_channels > 1:
+        audio = audio.reshape(-1, n_channels)
+        if mono:
+            audio = np.mean(audio, axis=1)
+    
+    # normalização [-1,1]
+    audio = audio.astype(np.float32) / np.max(np.abs(audio))
+    
+    return audio, sr
+
+
+def resample(audio, orig_sr, target_sr):
+    
+    if orig_sr == target_sr:
+        return audio
+    
+    duration = len(audio) / orig_sr
+    new_length = int(duration * target_sr)
+    
+    old_indices = np.arange(len(audio))
+    new_indices = np.linspace(0, len(audio) - 1, new_length)
+    
+    return np.interp(new_indices, old_indices, audio)
+
+
+def carrega_audio(path, sr=None, mono=True):
+    audio, orig_sr = carrega_wav(path, mono=mono)
+    
+    if sr is not None:
+        audio = resample(audio, orig_sr, sr)
+        return audio, sr
+    
+    return audio, orig_sr
