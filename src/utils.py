@@ -104,7 +104,7 @@
 
 #     return fb
 import numpy as np
-
+import math
 
 
 def normalizar(audio):
@@ -193,3 +193,50 @@ def gerar_log_mel_spectrogram(audio, sr, n_fft=1024, hop_length=512, n_mels=128)
     log_mel = np.log(mel_spec + 1e-9)
 
     return log_mel
+
+
+
+def get_duracao(audio, sr):
+    return len(audio) / sr
+
+def cruzamento_zero(audio):
+    cruzamentos = 0
+    for i in range(1, len(audio)):
+        if audio[i-1] * audio[i] < 0:
+            cruzamentos += 1
+    return cruzamentos / len(audio)
+
+def rms(signal):
+    return math.sqrt(sum(x*x for x in signal) / len(signal))
+
+def time_stretch(signal, factor):
+    signal = np.array(signal)
+    
+    indices = np.arange(0, len(signal), factor)
+    return np.interp(indices, np.arange(len(signal)), signal)
+
+def muda_pitch(signal, n_steps):
+    signal = np.array(signal)
+    
+    factor = 2 ** (n_steps / 12)
+    
+    stretched = time_stretch(signal, 1 / factor)
+
+    result = np.interp(
+        np.linspace(0, len(stretched)-1, len(signal)),
+        np.arange(len(stretched)),
+        stretched
+    )
+    
+    return result
+
+def istft(spectrogram, frame_size=1024, hop=512):
+    signal_len = (len(spectrogram) * hop) + frame_size
+    signal = np.zeros(signal_len)
+    window = np.hanning(frame_size)
+    
+    for i, frame in enumerate(spectrogram):
+        start = i * hop
+        signal[start:start+frame_size] += np.real(np.fft.ifft(frame)) * window
+    
+    return signal
