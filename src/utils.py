@@ -1,144 +1,112 @@
 import numpy as np
-import math
+
+def standardize_audio(audio):
+    audio = audio.astype(np.float32)
+
+    if np.max(np.abs(audio)) > 1:
+        audio = audio / 32768.0
+
+    return audio
 
 
-def normalizar(audio):
-    max_val = np.max(np.abs(audio))
-    return audio / max_val if max_val > 0 else audio
+def normalize_rms(audio, target_rms=0.1):
+    rms = np.sqrt(np.mean(audio**2))
+    if rms > 0:
+        audio = audio * (target_rms / rms)
+    return audio
 
 
-def add_noise(audio, noise_factor=0.003):
+def pre_emphasis(audio, alpha=0.97):
+    return np.append(audio[0], audio[1:] - alpha * audio[:-1])
+
+
+def remove_silence(audio, threshold=0.01):
+    energia = np.abs(audio)
+    indices = np.where(energia > threshold)[0]
+
+    if len(indices) > 0:
+        return audio[indices[0]:indices[-1]]
+
+    return audio
+
+
+def simulate_microphone(audio):
+
+
     noise = np.random.randn(len(audio))
-    return np.clip(audio + noise_factor * noise, -1, 1)
+    audio = audio + 0.003 * noise
 
 
-def time_stretch(audio, rate=1.0):
-    indices = np.arange(0, len(audio), rate)
-    indices = indices[indices < len(audio)].astype(int)
-    return audio[indices]
+    gain = np.random.uniform(0.5, 2.0)
+    audio = audio * gain
 
+   
+    audio = np.clip(audio, -1.0, 1.0)
 
-def pitch_shift(audio, n_steps):
-    fator = 2 ** (n_steps / 12)
-    stretched = time_stretch(audio, 1 / fator)
-    indices = np.linspace(0, len(stretched)-1, len(audio)).astype(int)
-    return stretched[indices]
+    return audio
 
 
 
-def stft_manual(audio, n_fft=1024, hop_length=512):
+def pad_or_trim(audio, target_length):
+    if len(audio) < target_length:
+        audio = np.pad(audio, (0, target_length - len(audio)))
+    else:
+        audio = audio[:target_length]
+    return audio
+
+
+def preprocess_audio(audio, target_length, training=False):
+
+    audio = standardize_audio(audio)
+
+    audio = remove_silence(audio)
+
+    audio = pad_or_trim(audio, target_length)
+
+    audio = pre_emphasis(audio)
+
+    audio = normalize_rms(audio)
+
+    if training:
+        audio = simulate_microphone(audio)
+
+    return audio
+
+
+
+def stft_manual(signal, n_fft=512, hop_length=160):
     frames = []
 
-    for i in range(0, len(audio) - n_fft, hop_length):
-        frame = audio[i:i+n_fft]
-
-        window = np.hamming(n_fft)
+    for i in range(0, len(signal) - n_fft, hop_length):
+        frame = signal[i:i+n_fft]
+        window = np.hanning(n_fft)
         frame = frame * window
-
-        fft = np.fft.fft(frame)
-        frames.append(np.abs(fft[:n_fft // 2]))
+        spectrum = np.fft.rfft(frame)
+        frames.append(spectrum)
 
     return np.array(frames)
 
 
-def hz_to_mel(hz):
-    return 2595 * np.log10(1 + hz / 700)
 
+def mel_filterbank(sr, n_fft, n_mels=128):
 
-def mel_to_hz(mel):
-    return 700 * (10**(mel / 2595) - 1)
+    def hz_to_mel(hz):
+        return 2595 * np.log10(1 + hz / 700)
 
+    def mel_to_hz(mel):
+        return 700 * (10**(mel / 2595) - 1)
 
-def mel_filterbank(sr, n_fft, n_mels=128, fmin=0, fmax=None):
-    if fmax is None:
-        fmax = sr / 2
-
-    mel_min = hz_to_mel(fmin)
-    mel_max = hz_to_mel(fmax)
-
-    mel_points = np.linspace(mel_min, mel_max, n_mels + 2)
+    mel_points = np.linspace(hz_to_mel(0), hz_to_mel(sr/2), n_mels+2)
     hz_points = mel_to_hz(mel_points)
 
     bins = np.floor((n_fft + 1) * hz_points / sr).astype(int)
 
-    fb = np.zeros((n_mels, n_fft // 2))
+    fb = np.zeros((n_mels, int(n_fft/2 + 1)))
 
     for i in range(1, n_mels + 1):
-        left = bins[i - 1]
-        center = bins[i]
-        right = bins[i + 1]
-
-        for j in range(left, center):
-            fb[i - 1, j] = (j - left) / (center - left + 1e-10)
-
-        for j in range(center, right):
-            fb[i - 1, j] = (right - j) / (right - center + 1e-10)
+        for j in range(bins[i-1], bins[i]):
+            fb[i-1, j] = (j - bins[i-1]) / (bins[i] - bins[i-1])
+        for j in range(bins[i], bins[i+1]):
+            fb[i-1, j] = (bins[i+1] - j) / (bins[i+1] - bins[i])
 
     return fb
-
-
-
-def gerar_log_mel_spectrogram(audio, sr, n_fft=1024, hop_length=512, n_mels=128):
-    S = stft_manual(audio, n_fft=n_fft, hop_length=hop_length)
-
-    mel_fb = mel_filterbank(sr, n_fft=n_fft, n_mels=n_mels)
-
-    mel_spec = np.dot(S, mel_fb.T)
-
-    log_mel = np.log(mel_spec + 1e-9)
-
-    return log_mel
-
-
-
-def get_duracao(audio, sr):
-    return len(audio) / sr
-
-def cruzamento_zero(audio):
-    cruzamentos = 0
-    for i in range(1, len(audio)):
-        if audio[i-1] * audio[i] < 0:
-            cruzamentos += 1
-    return cruzamentos / len(audio)
-
-def rms(signal):
-    return math.sqrt(sum(x*x for x in signal) / len(signal))
-
-def time_stretch(signal, factor):
-    signal = np.array(signal)
-    
-    indices = np.arange(0, len(signal), factor)
-    return np.interp(indices, np.arange(len(signal)), signal)
-
-def muda_pitch(signal, n_steps):
-    signal = np.array(signal)
-    
-    factor = 2 ** (n_steps / 12)
-    
-    stretched = time_stretch(signal, 1 / factor)
-
-    result = np.interp(
-        np.linspace(0, len(stretched)-1, len(signal)),
-        np.arange(len(stretched)),
-        stretched
-    )
-    
-    return result
-
-def istft(spectrogram, frame_size=1024, hop=512):
-    signal_len = (len(spectrogram) * hop) + frame_size
-    signal = np.zeros(signal_len)
-    window = np.hanning(frame_size)
-    
-    for i, frame in enumerate(spectrogram):
-        start = i * hop
-        signal[start:start+frame_size] += np.real(np.fft.ifft(frame)) * window
-    
-    return signal
-
-def pad_or_trim(audio, target_len):
-    if len(audio) > target_len:
-        return audio[:target_len]
-    elif len(audio) < target_len:
-        return np.pad(audio, (0, target_len - len(audio)))
-    return audio
