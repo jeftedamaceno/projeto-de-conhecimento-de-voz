@@ -110,3 +110,17 @@ def mel_filterbank(sr, n_fft, n_mels=128):
             fb[i-1, j] = (bins[i+1] - j) / (bins[i+1] - bins[i])
 
     return fb
+
+import numpy as np
+
+def add_noise(audio, noise_level=0.005):
+    noise = np.random.randn(len(audio))
+    return audio + noise_level * noise
+
+def random_shift(audio, shift_max=0.2):
+    shift = int(np.random.uniform(-shift_max, shift_max) * len(audio))
+    return np.roll(audio, shift)
+
+def random_gain(audio):
+    gain = np.random.uniform(0.7, 1.3)
+    return audio * gain
