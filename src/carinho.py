@@ -2,17 +2,12 @@ import math
 import pygame
 import matplotlib.pyplot as plt
 
-# ----------------------------------------------------------------------
-# Funções de odometria
-# ----------------------------------------------------------------------
 def sinc_safe(z: float) -> float:
     if abs(z) < 1e-9:
         return 1.0 - z * z / 6.0
     return math.sin(z) / z
 
-# ----------------------------------------------------------------------
-# Configuração da pista (idêntica à anterior)
-# ----------------------------------------------------------------------
+
 WORLD_X_MIN, WORLD_X_MAX = -1.0, 5.0
 WORLD_Y_MIN, WORLD_Y_MAX = -2.0, 3.0
 FINISH_X = 4.0
@@ -27,9 +22,7 @@ PARKED_CARS = [
     (2.0,  2.0, 0.3, 0.2),
 ]
 
-# ----------------------------------------------------------------------
-# Funções de colisão (mantidas)
-# ----------------------------------------------------------------------
+
 def circle_rect_collision(cx, cy, radius, rect):
     rx, ry, rw, rh = rect
     closest_x = max(rx, min(cx, rx + rw))
@@ -37,9 +30,7 @@ def circle_rect_collision(cx, cy, radius, rect):
     dist_sq = (cx - closest_x)*2 + (cy - closest_y)*2
     return dist_sq <= radius**2
 
-# ----------------------------------------------------------------------
-# Simulação interativa com os novos comandos
-# ----------------------------------------------------------------------
+
 def interactive_simulation(r, b, dt, x0, y0, theta0):
     pygame.init()
     WIDTH, HEIGHT = 800, 600
@@ -48,21 +39,20 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
     clock = pygame.time.Clock()
     font = pygame.font.SysFont("Arial", 16)
 
-    # Estado do robô
+
     x, y, theta = float(x0), float(y0), float(theta0)
     trail = [(x, y)]
     prev_x = x0
 
-    # Comandos
-    base_speed = 0.4            # velocidade única (m/s), maior que antes
-    turn_factor = 0.5           # fator de curva
-    command = 'stop'            # 'stop', 'straight', 'left', 'right'
+    base_speed = 0.4            
+    turn_factor = 0.5        
+    command = 'stop'           
 
-    # Câmera
+
     cam_x, cam_y = x, y
     scale = 150
 
-    # Cores
+
     BG_COLOR = (30, 30, 30)
     TRAIL_COLOR = (0, 200, 0)
     ROBOT_COLOR = (255, 100, 100)
@@ -78,32 +68,31 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
         clock.tick(int(1 / dt))
         dt_actual = dt
 
-        # Eventos de teclado
+      
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     running = False
-                # Comandos de movimento
+          
                 elif event.key == pygame.K_UP:
                     command = 'straight'
                 elif event.key == pygame.K_LEFT:
                     command = 'left'
                 elif event.key == pygame.K_RIGHT:
                     command = 'right'
-                # Parada
+      
                 elif event.key == pygame.K_SPACE:
                     command = 'stop'
-                # Giro de 180° (parar + girar instantaneamente)
+            
                 elif event.key == pygame.K_DOWN:
                     command = 'stop'
                     theta += math.pi
-                    theta = (theta + math.pi) % (2 * math.pi) - math.pi  # normaliza
-                    # Pequeno ajuste: registra também o rastro do giro sem deslocamento
-                    trail.append((x, y))   # ponto extra no mesmo lugar
+                    theta = (theta + math.pi) % (2 * math.pi) - math.pi  
+                 
+                    trail.append((x, y))  
 
-        # ---- Determinar movimento com base no comando ----
         if command == 'stop':
             current_speed = 0.0
             turn_dir = 0.0
@@ -116,13 +105,13 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
             elif command == 'right':
                 turn_dir = -1.0
             else:
-                turn_dir = 0.0   # fallback
+                turn_dir = 0.0 
 
-        # Velocidades das rodas
+      
         w_r = (current_speed / r) * (1.0 + turn_dir * turn_factor)
         w_l = (current_speed / r) * (1.0 - turn_dir * turn_factor)
 
-        # Odometria (se parado, v=0, omega=0 → não há deslocamento)
+
         v = r * (w_r + w_l) / 2.0
         omega = r * (w_r - w_l) / (2.0 * b)
         alpha = 0.5 * dt_actual * omega
@@ -131,7 +120,7 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
         delta_y = dt_actual * v * s * math.sin(theta + alpha)
         delta_theta = dt_actual * omega
 
-        # ---- Restrições de parede (deslizamento) ----
+ 
         new_x = x + delta_x
         new_y = y + delta_y
 
@@ -153,7 +142,6 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
         theta += delta_theta
         theta = (theta + math.pi) % (2 * math.pi) - math.pi
 
-        # ---- Colisão com carros estacionados ----
         for car in PARKED_CARS:
             if circle_rect_collision(x, y, ROBOT_RADIUS, car):
                 collision = True
@@ -161,20 +149,20 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
         if collision:
             running = False
 
-        # ---- Verificação da linha de chegada ----
+     
         if not finish_crossed and prev_x < FINISH_X and x >= FINISH_X:
             finish_crossed = True
             running = False
         prev_x = x
 
-        # Rastro
+   
         trail.append((x, y))
 
-        # Câmera
+  
         cam_x += (x - cam_x) * 0.1
         cam_y += (y - cam_y) * 0.1
 
-        # ---- Desenho ----
+
         screen.fill(BG_COLOR)
 
         def world_to_screen(wx, wy):
@@ -182,13 +170,12 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
             sy = HEIGHT / 2 - (wy - cam_y) * scale
             return int(sx), int(sy)
 
-        # Paredes
+  
         top_left = world_to_screen(WORLD_X_MIN, WORLD_Y_MAX)
         bottom_right = world_to_screen(WORLD_X_MAX, WORLD_Y_MIN)
         rect = pygame.Rect(top_left, (bottom_right[0]-top_left[0], bottom_right[1]-top_left[1]))
         pygame.draw.rect(screen, WALL_COLOR, rect, 2)
 
-        # Carros estacionados
         for car in PARKED_CARS:
             cx, cy, cw, ch = car
             p1 = world_to_screen(cx, cy + ch)
@@ -197,7 +184,7 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
             pygame.draw.rect(screen, CAR_COLOR, car_rect)
             pygame.draw.rect(screen, (255,255,255), car_rect, 1)
 
-        # Linha de chegada (tracejada)
+      
         for yy in range(int(WORLD_Y_MIN*10), int(WORLD_Y_MAX*10), 1):
             wy = yy / 10.0
             p_start = world_to_screen(FINISH_X, wy)
@@ -205,12 +192,11 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
             if int(yy) % 2 == 0:
                 pygame.draw.line(screen, FINISH_COLOR, p_start, p_end, 2)
 
-        # Rastro
         if len(trail) > 1:
             points = [world_to_screen(px, py) for px, py in trail]
             pygame.draw.lines(screen, TRAIL_COLOR, False, points, 1)
 
-        # Robô
+       
         nose_x = x + 0.06 * math.cos(theta)
         nose_y = y + 0.06 * math.sin(theta)
         left_x  = x - 0.04 * math.cos(theta) + 0.04 * math.cos(theta + 2.5)
@@ -222,7 +208,7 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
         p_right = world_to_screen(right_x, right_y)
         pygame.draw.polygon(screen, ROBOT_COLOR, [p_nose, p_left, p_right], 0)
 
-        # Status
+     
         status_text = f"Comando: {command}"
         if command == 'stop':
             status_text += " (parado)"
@@ -252,9 +238,7 @@ def interactive_simulation(r, b, dt, x0, y0, theta0):
     pygame.quit()
     return trail, finish_crossed, collision
 
-# ----------------------------------------------------------------------
-# Entrada e execução (igual, apenas ajustes nos textos)
-# ----------------------------------------------------------------------
+
 def main():
     print("Simulador interativo com pista, obstáculos e linha de chegada.")
     print("Novos controles:")

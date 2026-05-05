@@ -180,3 +180,74 @@ plt.xlabel("Predito")
 plt.ylabel("Real")
 plt.title("Matriz de Confusão")
 plt.show()
+
+history = model.fit(
+    X_train, y_train,
+    validation_data=(X_val, y_val),
+    epochs=40,
+    batch_size=32,
+    callbacks=callbacks
+)
+
+# LOSS
+plt.plot(history.history['loss'], label='Treino')
+plt.plot(history.history['val_loss'], label='Validação')
+plt.title("Loss")
+plt.legend()
+plt.show()
+
+# ACCURACY
+plt.plot(history.history['accuracy'], label='Treino')
+plt.plot(history.history['val_accuracy'], label='Validação')
+plt.title("Accuracy")
+plt.legend()
+plt.show()
+
+from sklearn.metrics import roc_curve, auc
+from sklearn.preprocessing import label_binarize
+
+y_val_bin = label_binarize(y_true, classes=range(num_classes))
+
+for i in range(num_classes):
+    fpr, tpr, _ = roc_curve(y_val_bin[:, i], preds[:, i])
+    roc_auc = auc(fpr, tpr)
+
+    plt.plot(fpr, tpr, label=f'Classe {labels[i]} (AUC={roc_auc:.2f})')
+
+plt.plot([0,1],[0,1],'k--')
+plt.xlabel("FPR")
+plt.ylabel("TPR")
+plt.title("ROC Curve")
+plt.legend()
+plt.show()
+
+from sklearn.metrics import classification_report
+import pandas as pd
+
+report = classification_report(y_true, y_pred, target_names=labels, output_dict=True)
+df = pd.DataFrame(report).transpose()
+
+df[['precision','recall','f1-score']].plot(kind='bar', figsize=(10,5))
+plt.title("Precision / Recall / F1")
+plt.xticks(rotation=45)
+plt.show()
+
+confidences = np.max(preds, axis=1)
+
+plt.hist(confidences, bins=20)
+plt.title("Confiança das previsões")
+plt.xlabel("Probabilidade")
+plt.ylabel("Frequência")
+plt.show()
+
+from sklearn.decomposition import PCA
+
+features = model.predict(X_val)
+
+pca = PCA(n_components=2)
+reduced = pca.fit_transform(features)
+
+plt.scatter(reduced[:,0], reduced[:,1], c=y_true)
+plt.title("Separação das classes (PCA)")
+plt.colorbar()
+plt.show()
